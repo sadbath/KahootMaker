@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kahoot! Editor v2.4 (Fixed)</title>
+    <!-- Google Font: Montserrat -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS & Customization -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Montserrat', 'sans-serif'] }, colors: { kahoot: { purple: '#46178F', 'dark-gray': '#2F2F2F', 'light-gray': '#3F3F3F', magenta: '#FF3385', blue: '#33B5E5', green: '#66BF39', yellow: '#FFC00A', red: '#E21B3C', } } } } }
+    </script>
+    <!-- IonIcons -->
+    <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
+    <style>
+        body { background-color: #2F2F2F; background-image: linear-gradient(135deg, rgba(255,255,255,0.02) 25%, transparent 25%), linear-gradient(225deg, rgba(255,255,255,0.02) 25%, transparent 25%), linear-gradient(45deg, rgba(255,255,255,0.02) 25%, transparent 25%), linear-gradient(315deg, rgba(255,255,255,0.02) 25%, #2F2F2F 25%); background-size: 20px 20px; }
+        .spinner { border: 4px solid #fff3; border-radius: 50%; border-top-color: #fff; width: 24px; height: 24px; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .tab-content { display: none; } .tab-content.active { display: block; }
+        .tab-btn.active { background-color: #46178F; color: white; }
+        .btn-kahoot { border-radius: 0.25rem; padding: 0.75rem 1.5rem; font-weight: 700; color: white; transition: transform 0.1s ease-out, box-shadow 0.1s ease-out; box-shadow: 0 4px 0 0 #0003; }
+        .btn-kahoot:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 6px 0 0 #0003; }
+        .btn-kahoot:not(:disabled):active { transform: translateY(1px); box-shadow: 0 2px 0 0 #0003; }
+        .modal { transition: opacity 0.3s ease; }
+    </style>
+</head>
+<body class="text-white font-sans flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="bg-kahoot-light-gray p-6 sm:p-8 rounded-lg shadow-2xl w-full max-w-4xl border border-black/50">
+        <div class="text-center mb-6" title="Pro-tip: Press Ctrl+Alt+C to change the CORS proxy.">
+            <h1 class="text-4xl font-extrabold tracking-tight"><span class="text-kahoot-blue">K!</span><span class="text-kahoot-magenta"> Editor</span></h1>
+            <p class="text-gray-400 text-sm">Create & Edit Kahoots with Power</p>
+        </div>
+
+        <div class="border-b border-black/50 mb-6 flex justify-between items-center">
+            <nav class="-mb-px flex space-x-1" aria-label="Tabs">
+                <button class="tab-btn active whitespace-nowrap py-3 px-5 rounded-t-md font-bold text-sm text-gray-300 hover:bg-gray-700/50" data-tab="create">Editor</button>
+                <button class="tab-btn whitespace-nowrap py-3 px-5 rounded-t-md font-bold text-sm text-gray-300 hover:bg-gray-700/50" data-tab="settings">Load & Settings</button>
+            </nav>
+            <button id="openHelpModalBtn" class="bg-kahoot-blue btn-kahoot text-sm py-2 px-4">Help & Syntax</button>
+        </div>
+        
+        <div id="createTab" class="tab-content active">
+            <div class="flex justify-end mb-2">
+                <button id="startNewBtn" class="text-kahoot-blue hover:underline text-xs font-bold flex items-center space-x-1"><ion-icon name="add-circle-outline"></ion-icon> <span>Start New Quiz</span></button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <input type="text" id="kahootTitle" class="w-full bg-kahoot-dark-gray border-2 border-transparent rounded px-3 py-2 text-white focus:ring-2 focus:ring-kahoot-blue focus:outline-none" placeholder="Kahoot Title">
+                <input type="text" id="kahootDescription" class="w-full bg-kahoot-dark-gray border-2 border-transparent rounded px-3 py-2 text-white focus:ring-2 focus:ring-kahoot-blue focus:outline-none" placeholder="Description">
+            </div>
+            <textarea id="quizData" rows="15" class="mt-4 w-full bg-kahoot-dark-gray border-2 border-transparent rounded px-3 py-2 text-white font-mono text-sm focus:ring-2 focus:ring-kahoot-blue focus:outline-none" placeholder="Enter your quiz content, or load an existing one from the next tab..."></textarea>
+            <div id="imageUploadsArea" class="mt-4 space-y-3"></div>
+            <div class="flex items-center space-x-4 mt-6">
+                <button id="saveKahootBtn" class="flex-grow bg-kahoot-purple btn-kahoot text-lg flex items-center justify-center space-x-2">
+                    <span id="saveBtnText">Create Kahoot</span>
+                </button>
+            </div>
+            <div id="statusArea" class="mt-6 p-4 rounded-md hidden"></div>
+        </div>
+
+        <div id="settingsTab" class="tab-content">
+             <div class="bg-black/20 p-4 rounded-lg border border-kahoot-blue/30 mb-6">
+                <label for="kahootLoader" class="block text-sm font-bold text-kahoot-blue mb-2">Load Existing Kahoot</label>
+                <div class="flex space-x-2">
+                    <input type="text" id="kahootLoader" class="flex-grow bg-kahoot-dark-gray border-2 border-transparent rounded px-3 py-2 text-white focus:ring-2 focus:ring-kahoot-blue focus:outline-none" placeholder="Paste Kahoot UUID or URL">
+                    <button id="loadKahootBtn" class="bg-kahoot-blue btn-kahoot text-sm py-2 px-4 flex items-center justify-center">Load</button>
+                </div>
+            </div>
+             <div class="bg-black/20 p-4 rounded-lg border border-kahoot-yellow/30">
+                <label for="authToken" class="block text-sm font-bold text-kahoot-yellow mb-2">Authentication Token</label>
+                <input type="password" id="authToken" class="w-full bg-kahoot-dark-gray border-2 border-transparent rounded px-3 py-2 text-white focus:ring-2 focus:ring-kahoot-yellow focus:outline-none" placeholder="Paste your Bearer token here">
+            </div>
+            <div class="mt-8">
+                <h3 class="text-xl font-bold text-gray-300 mb-4">Creation History</h3>
+                <div id="historyList" class="space-y-3 max-h-60 overflow-y-auto pr-2"></div>
+            </div>
+             <button id="clearDataBtn" class="mt-6 bg-kahoot-red btn-kahoot text-sm flex items-center space-x-2"><ion-icon name="trash-outline"></ion-icon><span>Clear All Saved Data</span></button>
+        </div>
+    </div>
+    
+    <footer class="text-center text-gray-500 text-xs mt-8 pb-4">
+        <p>This is an unofficial tool and is not affiliated with, sponsored, or endorsed by Kahoot! ASA.</p>
+    </footer>
+
+    <div id="helpModal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70 hidden">
+        <div class="bg-kahoot-light-gray rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-black/50">
+            <div class="flex justify-between items-center p-4 border-b border-black/50">
+                <h2 class="text-2xl font-bold text-gray-200">Help & Formatting Guide</h2>
+                <button id="closeHelpModalBtn" class="text-gray-400 hover:text-white text-3xl">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto text-gray-300 prose prose-invert prose-sm max-w-none">
+                <h4 class="mt-2">Question Options `[...]`</h4>
+                <ul><li>`time=30`</li><li>`points=off`</li><li>`points=double`</li></ul>
+                <h4 class="mt-4">Question Types `{...}`</h4>
+                <p><strong class="text-kahoot-green">Quiz (Default) & Multi-Select:</strong> Mark correct answers with `(*)`.</p>
+                <pre class="bg-kahoot-dark-gray p-3 rounded"><code>Which are prime numbers? [points=double]
+(*) 3
+(*) 5
+4
+6
+</code></pre>
+                <p><strong class="text-kahoot-green">True/False:</strong> `{type=true_false}`</p>
+                <pre class="bg-kahoot-dark-gray p-3 rounded"><code>The sky is blue. {type=true_false}
+(*) True
+</code></pre>
+                 <p><strong class="text-kahoot-green">Puzzle:</strong> `{type=puzzle}` - 4 answers in correct order.</p>
+                 <pre class="bg-kahoot-dark-gray p-3 rounded"><code>Order these. {type=puzzle}\nFirst\nSecond\nThird\nFourth</code></pre>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // vars
+    const DEFAULT_PROXY_URL = 'https://corsfix.io/?url=';
+    const KAHOOT_API_BASE = 'https://create.kahoot.it/rest/';
+    const WATERMARK = " (Created with K! Editor by Sadbath)";
+    let CORS_PROXY_URL = DEFAULT_PROXY_URL;
+    let currentKahootUUID = null;
+    let kahootHistory = [];
+
+    const elements = {
+        tabs: document.querySelectorAll('.tab-btn'), tabContents: document.querySelectorAll('.tab-content'), authToken: document.getElementById('authToken'),
+        kahootTitle: document.getElementById('kahootTitle'), kahootDescription: document.getElementById('kahootDescription'), quizData: document.getElementById('quizData'),
+        imageUploadsArea: document.getElementById('imageUploadsArea'), saveKahootBtn: document.getElementById('saveKahootBtn'), saveBtnText: document.getElementById('saveBtnText'),
+        statusArea: document.getElementById('statusArea'), historyList: document.getElementById('historyList'), clearDataBtn: document.getElementById('clearDataBtn'),
+        helpModal: document.getElementById('helpModal'), openHelpModalBtn: document.getElementById('openHelpModalBtn'), closeHelpModalBtn: document.getElementById('closeHelpModalBtn'),
+        kahootLoader: document.getElementById('kahootLoader'), loadKahootBtn: document.getElementById('loadKahootBtn'), startNewBtn: document.getElementById('startNewBtn'),
+    };
+
+    // init
+    document.addEventListener('DOMContentLoaded', () => {
+        loadDataFromStorage(); renderHistory(); updateModeUI();
+        elements.tabs.forEach(t => t.addEventListener('click', handleTabClick));
+        elements.openHelpModalBtn.addEventListener('click', () => elements.helpModal.classList.remove('hidden'));
+        elements.closeHelpModalBtn.addEventListener('click', () => elements.helpModal.classList.add('hidden'));
+        elements.helpModal.addEventListener('click', e => { if (e.target === elements.helpModal) elements.helpModal.classList.add('hidden'); });
+        document.addEventListener('keydown', handleGlobalKeys);
+        elements.authToken.addEventListener('input', () => localStorage.setItem('kahootAuthToken', elements.authToken.value.trim()));
+        elements.saveKahootBtn.addEventListener('click', handleSaveKahoot);
+        elements.loadKahootBtn.addEventListener('click', handleLoadKahoot);
+        elements.clearDataBtn.addEventListener('click', clearAllData);
+        elements.startNewBtn.addEventListener('click', resetToCreateMode);
+        elements.quizData.addEventListener('input', () => parseQuizData(elements.quizData.value.trim(), true));
+    });
+
+    // data mgmt
+    function handleGlobalKeys(e) { if (e.key === "Escape") elements.helpModal.classList.add('hidden'); if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'c') { e.preventDefault(); handleChangeProxy(); } }
+    function handleChangeProxy() { const newUrl = prompt('Enter full proxy URL (e.g., https://corsfix.io/?url=). Leave blank to reset:', CORS_PROXY_URL); if (newUrl === null) return; if (newUrl.trim() === '') { CORS_PROXY_URL = DEFAULT_PROXY_URL; localStorage.removeItem('kahootProxyUrl'); showStatus('CORS Proxy reset to default.', 'success', 'settingsTab'); } else { CORS_PROXY_URL = newUrl.trim(); localStorage.setItem('kahootProxyUrl', CORS_PROXY_URL); showStatus(`CORS Proxy set to: ${CORS_PROXY_URL}`, 'success', 'settingsTab'); } }
+    function handleTabClick(e) { const target = e.currentTarget.getAttribute('data-tab'); elements.tabs.forEach(t => t.classList.remove('active')); e.currentTarget.classList.add('active'); elements.tabContents.forEach(c => c.classList.toggle('active', c.id === `${target}Tab`)); }
+    function loadDataFromStorage() { elements.authToken.value = localStorage.getItem('kahootAuthToken') || ''; CORS_PROXY_URL = localStorage.getItem('kahootProxyUrl') || DEFAULT_PROXY_URL; kahootHistory = JSON.parse(localStorage.getItem('kahootHistory') || '[]'); }
+    function saveHistory() { localStorage.setItem('kahootHistory', JSON.stringify(kahootHistory)); }
+    function clearAllData() { if (confirm('Clear auth token, custom proxy, and history?')) { localStorage.clear(); elements.authToken.value = ''; kahootHistory = []; CORS_PROXY_URL = DEFAULT_PROXY_URL; renderHistory(); showStatus('All saved data has been cleared.', 'success', 'settingsTab'); } }
+    function updateModeUI() { const isUpdate = !!currentKahootUUID; elements.saveBtnText.textContent = isUpdate ? 'Update Kahoot' : 'Create Kahoot'; elements.saveKahootBtn.classList.toggle('bg-kahoot-yellow', isUpdate); elements.saveKahootBtn.classList.toggle('bg-kahoot-purple', !isUpdate); }
+    function renderHistory() { elements.historyList.innerHTML = kahootHistory.length === 0 ? `<p class="text-gray-400">No Kahoots created yet.</p>` : kahootHistory.map((item, index) => `<div class="bg-kahoot-dark-gray p-3 rounded-md flex justify-between items-center"><div><strong class="text-gray-200">${item.title}</strong><a href="${item.editLink}" target="_blank" class="text-kahoot-blue hover:underline text-xs block">View/Edit Link</a></div><button data-index="${index}" class="text-gray-400 hover:text-kahoot-red delete-history-btn"><ion-icon name="trash-outline"></ion-icon></button></div>`).join(''); document.querySelectorAll('.delete-history-btn').forEach(btn => btn.addEventListener('click', e => { kahootHistory.splice(e.currentTarget.dataset.index, 1); saveHistory(); renderHistory(); })); }
+    function resetToCreateMode() { currentKahootUUID = null; elements.kahootTitle.value = ''; elements.kahootDescription.value = ''; elements.quizData.value = ''; elements.imageUploadsArea.innerHTML = ''; updateModeUI(); showStatus('Form cleared. Ready to create a new Kahoot.', 'success'); }
+    
+    // core funcs
+    async function handleLoadKahoot() {
+        const uuidMatch = elements.kahootLoader.value.trim().match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/);
+        if (!uuidMatch) { showStatus('Invalid Kahoot UUID or URL.', 'error', 'settingsTab'); return; }
+        const uuid = uuidMatch[0];
+        setLoadingState(true, elements.loadKahootBtn);
+        try {
+            const res = await apiFetch(`kahoots/${uuid}`, { method: 'GET' }, elements.authToken.value);
+            if (!res.ok) throw new Error(`Could not load. Status: ${res.status}. Check token & UUID.`);
+            const kahootData = await res.json();
+            currentKahootUUID = kahootData.uuid;
+            elements.kahootTitle.value = kahootData.title;
+            elements.kahootDescription.value = (kahootData.description || '').replace(WATERMARK, '').trim();
+            elements.quizData.value = renderKahootDataAsText(kahootData);
+            updateModeUI(); parseQuizData(elements.quizData.value, true);
+            document.querySelector('.tab-btn[data-tab="create"]').click();
+            showStatus(`Loaded "${kahootData.title}" for editing. Click 'Start New Quiz' to create a new one instead of updating this one.`, 'success');
+        } catch (error) { showStatus(`Load failed: ${error.message}`, 'error', 'settingsTab'); } 
+        finally { setLoadingState(false, elements.loadKahootBtn); }
+    }
+
+    async function handleSaveKahoot() {
+        if (!elements.authToken.value || !elements.kahootTitle.value || !elements.quizData.value) { showStatus('Auth Token, Title, and Quiz Content are required.', 'error'); return; }
+        setLoadingState(true, elements.saveKahootBtn);
+        try {
+            showStatus('1/4: Parsing quiz...', 'loading'); const questions = parseQuizData(elements.quizData.value.trim()); if (questions.length === 0) throw new Error("No valid questions found in text.");
+            showStatus('2/4: Uploading images...', 'loading'); await uploadRequiredImages(questions, elements.authToken.value);
+            showStatus('3/4: Assembling Kahoot...', 'loading'); const isUpdate = !!currentKahootUUID; const finalDescription = (elements.kahootDescription.value.trim() + WATERMARK).slice(0, 280); const payload = buildKahootPayload(elements.kahootTitle.value, finalDescription, questions); if (isUpdate) payload.uuid = currentKahootUUID;
+            showStatus('4/4: Saving to Kahoot...', 'loading');
+            
+            if (isUpdate) {
+                await updateKahoot(payload, elements.authToken.value);
+                const editLink = `https://create.kahoot.it/details/${currentKahootUUID}`;
+                showStatus(`Success! Kahoot updated. <a href="${editLink}" target="_blank" class="text-kahoot-blue hover:underline">View it now</a>`, 'success');
+            } else {
+                const result = await createKahoot(payload, elements.authToken.value);
+                const editLink = `https://create.kahoot.it/details/${result.uuid}`;
+                currentKahootUUID = result.uuid; // Set UUID after creation so user can continue editing
+                updateModeUI();
+                kahootHistory.unshift({ title: result.title, editLink }); if (kahootHistory.length > 20) kahootHistory.pop(); saveHistory(); renderHistory();
+                showStatus(`Success! Kahoot created. <a href="${editLink}" target="_blank" class="text-kahoot-blue hover:underline">View it now</a>`, 'success');
+            }
+        } catch (error) { showStatus(`Save failed: ${error.message}`, 'error'); } 
+        finally { setLoadingState(false, elements.saveKahootBtn); }
+    }
+
+    function renderKahootDataAsText(kahoot) {
+        return (kahoot.questions || []).map(q => {
+            let options = [];
+            if (q.time / 1000 !== 20) options.push(`time=${q.time / 1000}`);
+            if (q.pointsQuestion === false) options.push('points=off');
+            if (q.pointsMultiplier === 2) options.push('points=double');
+            let qLine = `${q.question}${options.length > 0 ? ` [${options.join(', ')}]` : ''}`;
+            if (q.type !== 'quiz') qLine += ` {type=${q.type}}`;
+            let choicesText = (q.choices || []).map(c => `${c.correct && (q.type === 'quiz' || q.type === 'true_false') ? '(*) ' : ''}${c.answer}`).join('\n');
+            return `${qLine}${q.image ? '\n{image}' : ''}\n${choicesText}`;
+        }).join('\n\n');
+    }
+    
+    function parseQuizData(rawData, dryRun = false) {
+        let questions = [], imageCounter = 0, newImageInputs = {};
+        try {
+            for (const block of rawData.split(/\n\s*\n/).filter(Boolean)) {
+                let lines = block.trim().split('\n').filter(Boolean); if (lines.length === 0) continue;
+                let q = { options: { time: 20, points: true, pointsMultiplier: 1 }, imageUri: null };
+                let qLine = lines.shift().trim();
+                const typeMatch = qLine.match(/\{type=(.*?)\}/); q.type = typeMatch ? typeMatch[1].trim() : 'quiz'; if (typeMatch) qLine = qLine.replace(typeMatch[0], '').trim();
+                const optionMatch = qLine.match(/\[(.*?)\]$/); if(optionMatch){qLine=qLine.replace(optionMatch[0],'').trim(); optionMatch[1].split(',').forEach(p=>{const[k,v]=p.split('=').map(s=>s.trim());if(k==='time')q.options.time=parseInt(v)||20;if(k==='points')q.options.points=v!=='off';if(v==='double')q.options.pointsMultiplier=2;});} q.question=qLine;
+                q.needsImage = lines[0] && lines[0].trim() === '{image}'; if (q.needsImage) lines.shift();
+                
+                const correctLines = lines.filter(l => l.trim().startsWith('(*)'));
+                q.isMultiSelect = q.type === 'quiz' && correctLines.length > 1;
+
+                let answers = lines.map(l => l.trim().replace(/^\(\*\)\s*/, ''));
+                let correctAnswersText = correctLines.map(l => l.trim().replace(/^\(\*\)\s*/, ''));
+                if (q.type === 'true_false') { answers = ['True', 'False']; correctAnswersText = correctLines.map(l => l.includes('True') ? 'True' : 'False'); }
+                
+                q.choices = answers;
+                for (let i = q.choices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [q.choices[i], q.choices[j]] = [q.choices[j], q.choices[i]]; }
+                q.correctIndices = correctAnswersText.map(txt => q.choices.findIndex(c => c === txt)).filter(index => index !== -1);
+                
+                if (q.needsImage) { q.imageInputId = `image-upload-${imageCounter++}`; newImageInputs[q.imageInputId] = q.question; }
+                questions.push(q);
+            }
+        } catch(e) { if (!dryRun) throw e; }
+        if (dryRun) { elements.imageUploadsArea.innerHTML = Object.entries(newImageInputs).map(([id, qText]) => `<div class="bg-black/20 p-3 rounded-md"><label for="${id}" class="text-sm font-medium text-gray-300">Image for: "${qText.substring(0, 50)}..."</label><input type="file" id="${id}" accept="image/*" class="mt-2 text-sm text-gray-400 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:font-bold file:bg-kahoot-blue file:text-white hover:file:bg-opacity-80"/></div>`).join(''); }
+        return dryRun ? null : questions;
+    }
+
+    function buildKahootPayload(title, description, questions) {
+        return { title, description, visibility: 0, quizType: "quiz", language: "English",
+            questions: questions.map(q => {
+                const base = { type: q.type, question: q.question, time: q.options.time * 1000, image: q.imageUri || null, pointsQuestion: q.options.points, pointsMultiplier: q.options.pointsMultiplier };
+                if (q.type === 'quiz') {
+                    base.questionFormat = q.isMultiSelect ? 1 : 0;
+                }
+                return { ...base, choices: q.choices.map((c, i) => ({ answer: c, correct: q.correctIndices.includes(i) })) };
+            })
+        };
+    }
+    
+    // helpers
+    async function apiFetch(endpoint, options, token) { const targetUrl = `${KAHOOT_API_BASE}${endpoint}`; const url = `${CORS_PROXY_URL}${encodeURIComponent(targetUrl)}`; const headers = { ...options.headers }; headers['Authorization'] = `Bearer ${token.replace('Bearer ', '')}`; return fetch(url, { ...options, headers }); }
+    async function createKahoot(payload, token) { const res = await apiFetch('kahoots', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }, token); if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(res.status === 401 ? 'Auth failed.' : res.status === 403 ? 'Forbidden. Proxy might be blocked.' : `API Error: ${err.error || res.statusText}`); } return res.json(); }
+    async function updateKahoot(payload, token) { const res = await apiFetch(`kahoots/${payload.uuid}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }, token); if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(res.status === 401 ? 'Auth failed.' : res.status === 403 ? 'Forbidden. Proxy might be blocked.' : `API Error: ${err.error || res.statusText}`); } }
+    async function uploadRequiredImages(questions, token) { const imageQuestions = questions.filter(q => q.needsImage); if(imageQuestions.length===0) return; const promises=imageQuestions.map(q=>{const input=document.getElementById(q.imageInputId);if(!input||!input.files[0])throw new Error(`Image missing for: "${q.question}"`);const fd=new FormData();fd.append('file',input.files[0],input.files[0].name);return apiFetch('media/upload',{method:'POST',body:fd},token).then(r=>r.ok?r.json():Promise.reject(new Error(`Upload failed for ${input.files[0].name}`))).then(res=>{q.imageUri=res.file.uri;});}); await Promise.all(promises); }
+    function showStatus(message, type, tabId = 'createTab') { const el = document.getElementById(tabId).querySelector('#statusArea') || elements.statusArea; el.className = `mt-6 p-4 rounded-md border ${ type === 'success' ? 'bg-kahoot-green/20 text-green-300 border-green-700' : type === 'error' ? 'bg-kahoot-red/20 text-red-300 border-red-700' : 'bg-kahoot-blue/20 text-blue-300 border-kahoot-blue' }`; el.innerHTML = message; el.classList.remove('hidden'); }
+    function setLoadingState(isLoading, button) { button.disabled=isLoading; button.classList.toggle('opacity-50',isLoading); const spinner=button.querySelector('.spinner'); if(isLoading&&!spinner){const s=document.createElement('div');s.className='spinner';button.prepend(s);}else if(!isLoading&&spinner){spinner.remove();}}
+</script>
+</body>
+</html>
